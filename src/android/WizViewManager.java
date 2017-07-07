@@ -939,8 +939,8 @@ public class WizViewManager extends CordovaPlugin {
      *                    is properly injected, or null if the source string is JavaScript text
      *                    which should be executed directly.
      */
-    private void injectDeferredObject(String source, String jsWrapper) {
-        if (inAppWebView!=null) {
+    private void injectDeferredObject(WebView targetView, String source, String jsWrapper) {
+        if (targetView!=null) {
             String scriptToInject;
             if (jsWrapper != null) {
                 org.json.JSONArray jsonEsc = new org.json.JSONArray();
@@ -958,9 +958,9 @@ public class WizViewManager extends CordovaPlugin {
                 public void run() {
                     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.KITKAT) {
                         // This action will have the side-effect of blurring the currently focused element
-                        inAppWebView.loadUrl("javascript:" + finalScriptToInject);
+                        targetView.loadUrl("javascript:" + finalScriptToInject);
                     } else {
-                        inAppWebView.evaluateJavascript(finalScriptToInject, null);
+                        targetView.evaluateJavascript(finalScriptToInject, null);
                     }
                 }
             });
