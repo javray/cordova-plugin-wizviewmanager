@@ -594,7 +594,83 @@ public class WizViewManager extends CordovaPlugin {
 
                     callbackContext.success();
                     return true;
-
+                } else if (action.equals("injectScriptCode")) {
+                    
+                    final String viewName;
+                    String jsWrapper = null;
+                    
+                    viewName = args.getString(0);
+                    
+                    if (viewList.has(viewName) {
+                        
+                        final WebView targetView = (WebView) viewList.get(viewName);
+                        
+                        if (args.getBoolean(2)) {
+                            jsWrapper = String.format("(function(){prompt(JSON.stringify([eval(%%s)]), 'gap-iab://%s')})()", callbackContext.getCallbackId());
+                        }
+                        
+                        injectDeferredObject(targerView, args.getString(1), jsWrapper);
+                    }
+                    
+                    
+                }
+                else if (action.equals("injectScriptFile")) {
+                    
+                    final String viewName;
+                    String jsWrapper;
+                    
+                    viewName = args.getString(0);
+                    
+                    if (viewList.has(viewName)) {
+                        
+                        final WebView targetView = (WebView) viewList.get(viewName);
+                        
+                        if (args.getBoolean(2)) {
+                            jsWrapper = String.format("(function(d) { var c = d.createElement('script'); c.src = %%s; c.onload = function() { prompt('', 'gap-iab://%s'); }; d.body.appendChild(c); })(document)", callbackContext.getCallbackId());
+                        } else {
+                            jsWrapper = "(function(d) { var c = d.createElement('script'); c.src = %s; d.body.appendChild(c); })(document)";
+                        }
+                        
+                        injectDeferredObject(targetView, args.getString(1), jsWrapper);
+                    }
+                }
+                else if (action.equals("injectStyleCode")) {
+                    
+                    final String viewName;
+                    String jsWrapper;
+                    
+                    viewName = args.getString(0);
+                    
+                    if (viewList.has(viewName)) {
+                        
+                        final WebView targetView = (WebView) viewList.get(viewName);
+                    
+                        if (args.getBoolean(2)) {
+                            jsWrapper = String.format("(function(d) { var c = d.createElement('style'); c.innerHTML = %%s; d.body.appendChild(c); prompt('', 'gap-iab://%s');})(document)", callbackContext.getCallbackId());
+                        } else {
+                            jsWrapper = "(function(d) { var c = d.createElement('style'); c.innerHTML = %s; d.body.appendChild(c); })(document)";
+                        }
+                        injectDeferredObject(targetView, args.getString(1), jsWrapper);
+                    }
+                }
+                else if (action.equals("injectStyleFile")) {
+                    
+                    final String viewName;
+                    String jsWrapper;
+                    
+                    viewName = args.getString(0);
+                    
+                    if (viewList.has(viewName)) {
+                    
+                        final WebView targetView = (WebView) viewList.get(viewName);
+                        
+                        if (args.getBoolean(2)) {
+                            jsWrapper = String.format("(function(d) { var c = d.createElement('link'); c.rel='stylesheet'; c.type='text/css'; c.href = %%s; d.head.appendChild(c); prompt('', 'gap-iab://%s');})(document)", callbackContext.getCallbackId());
+                        } else {
+                            jsWrapper = "(function(d) { var c = d.createElement('link'); c.rel='stylesheet'; c.type='text/css'; c.href = %s; d.head.appendChild(c); })(document)";
+                        }
+                        injectDeferredObject(targetView, args.getString(1), jsWrapper);
+                    }
                 } else {
                     // Error handle
                     Log.e(TAG, "Cannot show. Cannot find view");
@@ -845,5 +921,51 @@ public class WizViewManager extends CordovaPlugin {
         view.setLayoutParams(layoutParams);
 
         Log.d("WizViewManager", "new layout -> width: " + layoutParams.width + " - height: " + layoutParams.height + " - margins: " + layoutParams.leftMargin + "," + layoutParams.topMargin + "," + layoutParams.rightMargin + "," + layoutParams.bottomMargin);
+    }
+    
+    /**
+     * Inject an object (script or style) into the InAppBrowser WebView.
+     *
+     * This is a helper method for the inject{Script|Style}{Code|File} API calls, which
+     * provides a consistent method for injecting JavaScript code into the document.
+     *
+     * If a wrapper string is supplied, then the source string will be JSON-encoded (adding
+     * quotes) and wrapped using string formatting. (The wrapper string should have a single
+     * '%s' marker)
+     *
+     * @param source      The source object (filename or script/style text) to inject into
+     *                    the document.
+     * @param jsWrapper   A JavaScript string to wrap the source string in, so that the object
+     *                    is properly injected, or null if the source string is JavaScript text
+     *                    which should be executed directly.
+     */
+    private void injectDeferredObject(String source, String jsWrapper) {
+        if (inAppWebView!=null) {
+            String scriptToInject;
+            if (jsWrapper != null) {
+                org.json.JSONArray jsonEsc = new org.json.JSONArray();
+                jsonEsc.put(source);
+                String jsonRepr = jsonEsc.toString();
+                String jsonSourceString = jsonRepr.substring(1, jsonRepr.length()-1);
+                scriptToInject = String.format(jsWrapper, jsonSourceString);
+            } else {
+                scriptToInject = source;
+            }
+            final String finalScriptToInject = scriptToInject;
+            this.cordova.getActivity().runOnUiThread(new Runnable() {
+                @SuppressLint("NewApi")
+                @Override
+                public void run() {
+                    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.KITKAT) {
+                        // This action will have the side-effect of blurring the currently focused element
+                        inAppWebView.loadUrl("javascript:" + finalScriptToInject);
+                    } else {
+                        inAppWebView.evaluateJavascript(finalScriptToInject, null);
+                    }
+                }
+            });
+        } else {
+            LOG.d(LOG_TAG, "Can't inject code into the system browser");
+        }
     }
 }
