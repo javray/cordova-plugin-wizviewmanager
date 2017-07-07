@@ -58,6 +58,25 @@ View.prototype.setLayout = function (options, success, failure) {
 	propsToString(options);
     cordova.exec(success, failure, "WizViewManager", "setLayout", [this.name, options]);
 };
+View.prototype.executeScript = function(injectDetails, cb) {
+    if (injectDetails.code) {
+	cordova.exec(cb, null, "WizViewManager", "injectScriptCode", [this.name, injectDetails.code, !!cb]);
+    } else if (injectDetails.file) {
+	cordova.exec(cb, null, "WizViewManager", "injectScriptFile", [this.name, injectDetails.file, !!cb]);
+    } else {
+	throw new Error('executeScript requires exactly one of code or file to be specified');
+    }
+};
+
+View.prototype.insertCSS: function(injectDetails, cb) {
+    if (injectDetails.code) {
+	cordova.exec(cb, null, "WizViewManager", "injectStyleCode", [this.name, injectDetails.code, !!cb]);
+    } else if (injectDetails.file) {
+	cordova.exec(cb, null, "WizViewManager", "injectStyleFile", [this.name, injectDetails.file, !!cb]);
+    } else {
+	throw new Error('insertCSS requires exactly one of code or file to be specified');
+    }
+};
 
 WizViewManager.prototype.receivedMessage = function (message, senderName) {
 	// for more information on the MessageEvent API, see:
@@ -77,6 +96,22 @@ WizViewManager.prototype.throwError = function (cb, error) {
 	} else {
 		throw error;
 	}
+};
+
+WizViewManager.prototype.executeScript = function (name, injectDetails, success, failure) {
+	if (!this.views[name]) {
+		return this.throwError(failure, new Error('Show Error with view name: ' + name + '. View does not exist'));
+	}
+
+	this.views[name].executeScript(injectDetails, success, failure);
+};
+
+WizViewManager.prototype.insertCSS = function (name, injectDetails, success, failure) {
+	if (!this.views[name]) {
+		return this.throwError(failure, new Error('Show Error with view name: ' + name + '. View does not exist'));
+	}
+
+	this.views[name].insertCSS(injectDetails, success, failure);
 };
 
 WizViewManager.prototype.create = function (name, options, success, failure) {
